@@ -1,9 +1,12 @@
 #include <iostream>
+#include <conio.h>
+#include <windows.h>        //česká diakritika
 using namespace std;
 
 
-    int pozice = 0;
-    bool konec_hry = false;
+    int pozice          = 0;
+    bool konec_hry      = false;
+    string klavesy[5]   = {"q", "w", "e", "r", "t"};
 
     struct Postava          //pouziti struktur, chatGBT, https://www.w3schools.com/cpp/cpp_structs.asp, dokumentace c++
     {
@@ -32,6 +35,7 @@ using namespace std;
         int pohyb[5];
     };
 
+    // DATA HRY
     Postava postavy[] =
     {
         {"Paladin", 0, "popis Paladina", 100, 100, 100, 100, 10, 1, 0, 60, 20},
@@ -47,8 +51,8 @@ using namespace std;
         {"Konec", 4, "konec", 0, "vesnice", false, {}}
     };
 
-    int pocet_mist = sizeof(mista)/sizeof(mista[0]);
-    int posledni_misto = pocet_mist - 1;
+    int pocet_mist      = sizeof(mista)/sizeof(mista[0]);
+    int posledni_misto  = pocet_mist - 1;
 
 void vypis()
 {
@@ -81,32 +85,70 @@ void vypis()
             }
     }
 **/
-    cout << mista[pozice].nazev << endl;
-    cout << "Kam muzes j�t?" << endl;
+    int k = 0;
+    string klavesa;
+    int kod_klavesy;
+    int xMisto[5];
+    string xKlavesa[5];
+    bool spravna_klavesa = false;
+
+    cout << endl << mista[pozice].nazev << endl;
+    cout << "Kam můžeš jít?" << endl;
+
+    // vypis moznych mist pro pohyb ve hre
     for (int j = 0; j < sizeof(mista[pozice].pohyb)/sizeof(mista[pozice].pohyb[0]); j++)
     {
-                if (mista[pozice].pohyb[j] > 0)
-                    {
-                     int id_budouci = mista[pozice].pohyb[j];
-                     cout << mista[id_budouci].nazev << ": " << id_budouci << endl;
-                    }
+        if (mista[pozice].pohyb[j] > 0)
+        {
+            int id_budouci = mista[pozice].pohyb[j];
+            cout << mista[id_budouci].nazev << "(" << klavesy[k]<< ") "<< endl;
+            xMisto[j] = id_budouci;
+            xKlavesa[j] = klavesy[k];
+            k++;
+            // cout << mista[id_budouci].nazev << "(" << xKlavesa[j] << "): " << xMisto[j] << endl;
+        }
     }
 
-    cout << "Kam jdes?\n";
-    cin >> pozice;
+    cout << "Kam jdeš?\n";
+
+    // cteni klavesy od hrace
+    kod_klavesy = getch();      //pouziti getch(), https://www.geeksforgeeks.org/getch-function-in-c-with-examples/, dokumentace c++
+    klavesa = (char)kod_klavesy;
+
+    // kontrola klavesy vuci mistum ve hre
+    for (int j = 0; j < sizeof(xKlavesa)/sizeof(xKlavesa[0]); j++)
+    {
+        if (xKlavesa[j] == klavesa)
+        {
+            pozice = xMisto[j];
+            spravna_klavesa = true;
+        }
+    }
+
+    // osetreni chybne klavesy hrace
+    if (!spravna_klavesa)
+    {
+        cout << "\nChyba!\nPoužil jsi špatnou klávesu" << endl;
+        cout << "Press any key to continue!";
+        kod_klavesy = getch();
+    }
+
 }
 int main()
 {
+    SetConsoleOutputCP(CP_UTF8);
     do
     {
+        system("cls");      //pouziti clear screen, https://www.geeksforgeeks.org/how-to-clear-console-in-cpp/, dokumentace c++
         vypis();
 
         if (pozice == posledni_misto)
-            {
-                konec_hry = true;
-            }
+        {
+            konec_hry = true;
+        }
        // konec_hry = true;
     } while (!konec_hry);
 
+    cout << "\nGAME OVER!!" << endl;
     return 0;
 }
