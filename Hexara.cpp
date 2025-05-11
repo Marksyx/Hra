@@ -1,6 +1,6 @@
 #include <iostream>
 #include <conio.h>
-#include <windows.h>        //�esk� diakritika
+#include <windows.h>        //česká diakritika
 using namespace std;
 
 
@@ -8,20 +8,28 @@ using namespace std;
     bool konec_hry      = false;
     string klavesy[5]   = {"q", "w", "e", "r", "t"};
 
-    struct Postava          //pouziti struktur, chatGBT, https://www.w3schools.com/cpp/cpp_structs.asp, dokumentace c++
+    struct Hrdina          //pouziti struktur, chatGBT, https://www.w3schools.com/cpp/cpp_structs.asp, dokumentace c++
     {
         string jmeno;
         int id;
         string popis;
         int zivoty;
-        int max_zivoty;
         int mana;
-        int max_mana;
         int penize;
         int level;
         int zkusenosti;
         int utok;
-        int schopnosti;
+        int schopnosti[10];
+    };
+
+    struct Mostrum
+    {
+        string jmeno;
+        int id;
+        string popis;
+        int zivoty;
+        int utok;
+        int kouzla[10];
     };
 
     struct Misto
@@ -33,21 +41,72 @@ using namespace std;
         string typ;
         bool navstiveno;
         int pohyb[5];
+        int monstra[3];
+    };
+
+    struct Level
+    {
+        int max_zivoty;
+        int max_mana;
+        int schopnost;
+        int odmena;
+    };
+
+    struct Schopnost
+    {
+        string nazev;
+        float uder;         //Znasobi silu uderu
+        bool multi_uder;    //True=Uder na vsechny monstra, mana-10
+        int oziveni;        //Prida pocet zivotu
+    };
+
+    struct Kouzlo
+    {
+        string nazev;
+        float uder;         //Znasobi silu uderu
     };
 
     // DATA HRY
-    Postava postavy[] =
+
+    Level levels[] =
     {
-        {"Paladin", 0, "popis Paladina", 100, 100, 100, 100, 10, 1, 0, 60, 20},
-        {"Monstrum", 1, "popis Monstra", 100, 100, 100, 100, 10, 1, 0, 60, 20}
+        {100, 100, NULL, 0},
+        {110, 100, 0, 0},
+        {115, 110, 1, 10}
+    };
+
+    Schopnost schopnosti[] =
+    {
+        {"Silnější úder", 1.5, false, 0},
+        {"Útok světlem", 1, true, 0},
+        {"Oživení", 1, false, 10}
+    };
+    Kouzlo kouzla[] =
+    {
+        {"Blesk", 1.5},
+        {"Hrom", 1.3}
+    };
+
+    Hrdina hrdinove[] =
+    {
+        {"Paladin", 0, "popis Paladina", 100, 100, 10, 0, 0, 60},
+        {"Lovec", 1, "popis Lovce", 80, 100, 10, 0, 0, 80},
+        {"Mag", 2, "popis Maga", 90, 120, 10, 0, 0, 50},
+        {"Warlock", 3, "popis Warlocka", 120, 80, 10, 0, 0, 50}
+    };
+
+    Mostrum monstra[] =
+    {
+        {"Monstrum", 1, "popis Monstra", 100, 10, {}},
+        {"Monstrum2", 2, "popis Monstra2", 80, 20, {0, 1}}
     };
 
     Misto mista[] =
     {
         {"Start", 0, "popis Startu", 0, "zacatek", false, {2}},
-        {"Les", 1, "popis Bojiste", 5, "bojiste", false, {2, 3, 4}},
+        {"Les", 1, "popis Bojiste", 5, "bojiste", false, {2, 3, 4},{1}},
         {"Grad", 2, "vesnice", 0, "vesnice", false, {1, 3}},
-        {"Reka", 3, "reka", 0, "bojiste", false, {2, 1, 4}},
+        {"Reka", 3, "reka", 0, "bojiste", false, {2, 1, 4},{2}},
         {"Konec", 4, "konec", 0, "vesnice", false, {}}
     };
 
@@ -93,7 +152,7 @@ void vypis()
     bool spravna_klavesa = false;
 
     cout << endl << mista[pozice].nazev << endl;
-    cout << "Kam m��e� j�t?" << endl;
+    cout << "Kam můžeš jít?" << endl;
 
     // vypis moznych mist pro pohyb ve hre
     for (int j = 0; j < sizeof(mista[pozice].pohyb)/sizeof(mista[pozice].pohyb[0]); j++)
@@ -109,7 +168,7 @@ void vypis()
         }
     }
 
-    cout << "Kam jde�?\n";
+    cout << "Kam jdeš?\n";
 
     // cteni klavesy od hrace
     kod_klavesy = getch();      //pouziti getch(), https://www.geeksforgeeks.org/getch-function-in-c-with-examples/, dokumentace c++
@@ -128,7 +187,7 @@ void vypis()
     // osetreni chybne klavesy hrace
     if (!spravna_klavesa)
     {
-        cout << "\nChyba!\nPou�il jsi �patnou kl�vesu" << endl;
+        cout << "\nChyba!\nPoužil jsi špatnou klávesu" << endl;
         cout << "Press any key to continue!";
         kod_klavesy = getch();
     }
@@ -137,6 +196,39 @@ void vypis()
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
+
+    int muj_hrdina;
+    char opravdu;
+    int pocet_hrdinu = sizeof(hrdinove)/sizeof(hrdinove[0]);
+
+    do {
+        system("cls");
+
+        cout << "Vyber si hrdinu: " << endl;
+        for (int i = 0; i < pocet_hrdinu; i++)
+        {
+            cout << i << " " << hrdinove[i].jmeno << " - " << hrdinove[i].popis << endl;
+        }
+
+        cout << "\nZadej číslo hrdiny: ";
+        cin >> muj_hrdina;
+
+        cout << "Jméno: " << hrdinove[muj_hrdina].jmeno << endl;
+        cout << "Popis: " << hrdinove[muj_hrdina].popis << endl;
+        cout << "Životy: " << hrdinove[muj_hrdina].zivoty << endl;
+        cout << "Mana: " << hrdinove[muj_hrdina].mana << endl;
+        cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl;
+        cout << "Level: " << hrdinove[muj_hrdina].level << endl;
+        cout << "Zkušenosti: " << hrdinove[muj_hrdina].zkusenosti << endl;
+        cout << "Útok: " << hrdinove[muj_hrdina].utok << endl << endl;
+
+        cout << "Chceš tuto postavu (a/n)?";
+        cin >> opravdu;
+
+
+    } while (opravdu != 'a' && opravdu != 'A');
+
+
     do
     {
         system("cls");      //pouziti clear screen, https://www.geeksforgeeks.org/how-to-clear-console-in-cpp/, dokumentace c++
