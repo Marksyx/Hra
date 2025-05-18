@@ -5,6 +5,7 @@ using namespace std;
 
 
     int pozice          = 0;
+    int muj_hrdina;
     bool konec_hry      = false;
     string klavesy[5]   = {"q", "w", "e", "r", "t"};
 
@@ -25,7 +26,7 @@ using namespace std;
     struct Mostrum
     {
         string jmeno;
-        int id;
+        // int id;
         string popis;
         int zivoty;
         int utok;
@@ -91,14 +92,15 @@ using namespace std;
     {
         {"Paladin", 0, "popis Paladina", 100, 100, 10, 0, 0, 60},
         {"Lovec", 1, "popis Lovce", 80, 100, 10, 0, 0, 80},
-        {"Mag", 2, "popis Maga", 90, 120, 10, 0, 0, 50},
+        {"Mag", 2, "popis Maga", 1, 120, 10, 0, 0, 50},
         {"Warlock", 3, "popis Warlocka", 120, 80, 10, 0, 0, 50}
     };
 
     Mostrum monstra[] =
     {
-        {"Monstrum", 1, "popis Monstra", 100, 10, {}},
-        {"Monstrum2", 2, "popis Monstra2", 80, 20, {0, 1}}
+        {"NoMonster", "", 0, 0, {}},
+        {"Monstrum", "popis Monstra", 100, 10, {}},
+        {"Monstrum2", "popis Monstra2", 80, 20, {0, 1}}
     };
 
     Misto mista[] =
@@ -106,12 +108,81 @@ using namespace std;
         {"Start", 0, "popis Startu", 0, "zacatek", false, {2}},
         {"Les", 1, "popis Bojiste", 5, "bojiste", false, {2, 3, 4},{1}},
         {"Grad", 2, "vesnice", 0, "vesnice", false, {1, 3}},
-        {"Reka", 3, "reka", 0, "bojiste", false, {2, 1, 4},{2}},
+        {"Řeka", 3, "reka", 0, "bojiste", false, {2, 1, 4},{2, 1}},
         {"Konec", 4, "konec", 0, "vesnice", false, {}}
     };
 
     int pocet_mist      = sizeof(mista)/sizeof(mista[0]);
     int posledni_misto  = pocet_mist - 1;
+
+void konec(bool vyhra)
+{
+    if(vyhra)
+    {
+        cout << "Gratuluju, hru jsi úspěšně dohrál" << endl;
+    }
+    else
+    {
+        cout << "Bohužel jsi prohrál. Zkus to příště." << endl;
+    }
+    cout << "Jeslti se ti hra líbila, nebo k ní máš nějaké připomínky nebo nápady, napiš mi na marksyxx@gmail.com.";
+    exit(0);
+}
+
+void boj()
+{
+    // cout << "Pocet monster v miste: " << sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]) << endl;
+
+    int tah = 1;
+    int i;
+    cout << hrdinove[muj_hrdina].jmeno << endl;
+    for (i = 0; i < sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]); i++)
+    {
+        if(mista[pozice].monstra[i] > 0)
+        {
+            cout << monstra[mista[pozice].monstra[i]].jmeno;
+            if(monstra[mista[pozice].monstra[i]].zivoty <= 0)
+            {
+                cout <<    " DEAD";
+            }
+            cout << endl;
+         }
+    }
+    system("pause");
+
+    for (i = 0; i < sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]); i++)
+    {
+        bool vyhra_souboj = false;
+        tah = 1;
+        if(mista[pozice].monstra[i] > 0 && monstra[mista[pozice].monstra[i]].zivoty > 0)
+        {
+            do
+            {
+                cout << "Hrdina (" << hrdinove[muj_hrdina].jmeno << "): " << hrdinove[muj_hrdina].zivoty << endl;
+                cout << "Monstrum (" << monstra[mista[pozice].monstra[i]].jmeno << "): " << monstra[mista[pozice].monstra[i]].zivoty << endl;
+
+                cout << "Tah " << tah++ << ".: " << endl;
+
+                monstra[mista[pozice].monstra[i]].zivoty = monstra[mista[pozice].monstra[i]].zivoty - hrdinove[muj_hrdina].utok;
+                if(monstra[mista[pozice].monstra[i]].zivoty < 0)
+                {
+                    cout << "Hrdina vyhrál souboj" << endl;
+                    vyhra_souboj = true;
+                }
+                else
+                {
+                    hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - monstra[mista[pozice].monstra[i]].utok;
+                    if(hrdinove[muj_hrdina].zivoty < 0)
+                    {
+                        cout << "Hrdina prohrál souboj" << endl;
+                        konec(false);
+                    }
+                }
+                system("pause");
+            }while(!vyhra_souboj);
+        }
+    }
+}
 
 void vypis()
 {
@@ -138,13 +209,14 @@ void vypis()
         for (int j = 0; j < sizeof(mista[i].pohyb)/sizeof(mista[i].pohyb[0]); j++)
             {
                 if (mista[i].pohyb[j] > 0
-                    {
-                     cout << mista[i].pohyb[j] << ", ";
-                    }
+                {
+                    cout << mista[i].pohyb[j] << ", ";
+                }
             }
     }
 **/
-    int k = 0;
+    int k = 0;      //pomocna ke klavesam
+    int m = 0;      //pomocna k monstrum
     string klavesa;
     int kod_klavesy;
     int xMisto[5];
@@ -152,7 +224,24 @@ void vypis()
     bool spravna_klavesa = false;
 
     cout << endl << mista[pozice].nazev << endl;
-    cout << "Kam můžeš jít?" << endl;
+
+    int pocet_monster = sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]);
+
+    for (int j = 0; j < pocet_monster; j++)
+    {
+        if (mista[pozice].monstra[j] > 0)
+        {
+            cout << "Na tomto místě je toto monstrum: " << monstra[mista[pozice].monstra[j]].jmeno << endl;
+            m++;
+        }
+    }
+    if(m)
+    {
+        cout << "\nBoj začíná" << endl;
+        boj();
+    }
+
+    cout << endl << "Kam můžeš jít?" << endl;
 
     // vypis moznych mist pro pohyb ve hre
     for (int j = 0; j < sizeof(mista[pozice].pohyb)/sizeof(mista[pozice].pohyb[0]); j++)
@@ -197,36 +286,39 @@ int main()
 {
     SetConsoleOutputCP(CP_UTF8);
 
-    int muj_hrdina;
     char opravdu;
     int pocet_hrdinu = sizeof(hrdinove)/sizeof(hrdinove[0]);
 
-    do {
-        system("cls");
-
-        cout << "Vyber si hrdinu: " << endl;
-        for (int i = 0; i < pocet_hrdinu; i++)
+    do
+    {
+        do
         {
-            cout << i << " " << hrdinove[i].jmeno << " - " << hrdinove[i].popis << endl;
-        }
+            system("cls");
 
-        cout << "\nZadej číslo hrdiny: ";
-        cin >> muj_hrdina;
+            cout << "Vyber si hrdinu: " << endl;
+            for (int i = 0; i < pocet_hrdinu; i++)
+            {
+                cout << i << " " << hrdinove[i].jmeno << " - " << hrdinove[i].popis << endl;
+            }
 
-        cout << "Jméno: " << hrdinove[muj_hrdina].jmeno << endl;
-        cout << "Popis: " << hrdinove[muj_hrdina].popis << endl;
-        cout << "Životy: " << hrdinove[muj_hrdina].zivoty << endl;
-        cout << "Mana: " << hrdinove[muj_hrdina].mana << endl;
-        cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl;
-        cout << "Level: " << hrdinove[muj_hrdina].level << endl;
-        cout << "Zkušenosti: " << hrdinove[muj_hrdina].zkusenosti << endl;
-        cout << "Útok: " << hrdinove[muj_hrdina].utok << endl << endl;
+            cout << "\nZadej číslo hrdiny: ";
+            cin >> muj_hrdina;
+        }while (muj_hrdina < 0 || muj_hrdina >= pocet_hrdinu);
 
-        cout << "Chceš tuto postavu (a/n)?";
-        cin >> opravdu;
+            cout << "Jméno: " << hrdinove[muj_hrdina].jmeno << endl;
+            cout << "Popis: " << hrdinove[muj_hrdina].popis << endl;
+            cout << "Životy: " << hrdinove[muj_hrdina].zivoty << endl;
+            cout << "Mana: " << hrdinove[muj_hrdina].mana << endl;
+            cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl;
+            cout << "Level: " << hrdinove[muj_hrdina].level << endl;
+            cout << "Zkušenosti: " << hrdinove[muj_hrdina].zkusenosti << endl;
+            cout << "Útok: " << hrdinove[muj_hrdina].utok << endl << endl;
+
+            cout << "Chceš tuto postavu (a/n)?";
+            cin >> opravdu;
 
 
-    } while (opravdu != 'a' && opravdu != 'A');
+    }while (opravdu != 'a' && opravdu != 'A');
 
 
     do
