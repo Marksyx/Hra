@@ -1,9 +1,23 @@
+// Autor: Marek Sýkora
+// Verze: 1.0.0 release 8
+
+// TODO
+// sjednotit ovládání voleb
+// schopnosti
+// kouzla + Hexara
+// vylepšit výpisy
+// dopsat popisy míst a doplnit příběh
+
+// Známé chyby
+// ...
+
+
 #include <iostream>
 #include <conio.h>
 #include <windows.h>        //česká diakritika
 #include <cstdlib>
-#include <ctime>
-#include <limits>
+#include <ctime>            //řešení náhodnosti
+#include <limits>           //řešení náhodnosti
 using namespace std;
 
 
@@ -13,13 +27,20 @@ using namespace std;
     bool debug          = true;
     string klavesy[5]   = {"q", "w", "e", "r", "t"};
 
+    // Parametry hry
+
+    const int CENA_ZA_UPGRADE = 20;
+    const int NAVYSENI_MAX = 20;
+
     struct Hrdina          //pouziti struktur, chatGBT, https://www.w3schools.com/cpp/cpp_structs.asp, dokumentace c++
     {
         string jmeno;
         int id;
         string popis;
         int zivoty;
+        int max_zivoty;
         int mana;
+        int max_mana;
         int penize;
         int level;
         int zkusenosti;
@@ -32,6 +53,7 @@ using namespace std;
         string jmeno;
         // int id;
         string popis;
+        bool boss;
         int zivoty;
         int utok;
         int kouzla[10];
@@ -51,8 +73,8 @@ using namespace std;
 
     struct Level
     {
-        int max_zivoty;
-        int max_mana;
+        int plus_zivoty;
+        int plus_mana;
         float odmena;
     };
 
@@ -74,10 +96,15 @@ using namespace std;
 
     Level levels[] =
     {
-        // max_zivoty; max_mana; odmena;
-        {100, 100, 1},
-        {110, 100, 1.1},
-        {115, 110, 1.2}
+        // plus_zivoty; plus_mana; odmena;
+        {20, 20, 1},
+        {20, 20, 1.1},
+        {20, 20, 1.2},
+        {20, 20, 1.3},
+        {20, 20, 1.4},
+        {20, 20, 1.5},
+        {20, 20, 1.6},
+        {20, 20, 1.7}
     };
 
     Schopnost schopnosti[] =
@@ -98,37 +125,37 @@ using namespace std;
 
     Hrdina hrdinove[] =
     {
-        // jmeno; id; popis; zivoty; mana; penize; level; zkusenosti; utok; schopnosti
-        {"Paladin", 0, "popis Paladina", 100, 100, 10, 0, 0, 60,{}},
-        {"Lovec", 1, "popis Lovce", 80, 100, 10, 0, 0, 80},
-        {"Mag", 2, "popis Maga", 1, 120, 10, 0, 0, 50},
-        {"Warlock", 3, "popis Warlocka", 120, 80, 10, 0, 0, 50}
+        // jmeno; id; popis; zivoty; max_zivoty; mana; max_mana; penize; level; zkusenosti; utok; schopnosti
+        {"Paladin", 0, "popis Paladina", 100, 100, 100, 100, 10, 0, 0, 60,{}},
+        {"Lovec", 1, "popis Lovce", 80, 80, 100, 100, 10, 0, 0, 80},
+        {"Mag", 2, "popis Maga", 100, 100, 120, 120, 10, 0, 0, 50},
+        {"Warlock", 3, "popis Warlocka", 80, 80, 80, 80, 10, 0, 0, 50}
     };
 
     Mostrum monstra[] =
     {
-        // jmeno; popis; zivoty; utok; kouzla
+        // jmeno; popis; boss; zivoty; utok; kouzla
         {"NoMonster", "", 0, 0, {}},
-        {"Stínokrad", "Tvor z temnoty, který se zjevuje tam, kde se šíří strach. Jeho tělo tvoří živoucí stín.", 100, 10, {}},                                                      //1(cave)                   1
-        {"Kostěný rváč", "Nemrtvý válečník se zrezivělým mečem a popraskaným štítem. I po smrti touží po souboji.", 80, 20, {}},                                                    //7(hřbitov)                2
-        {"Jeskynní škrabač", "Malý, ale nebezpečný tvor se silnými drápy. Vydává děsivé zvuky, než zaútočí ze tmy.", 80, 20, {}},                                                   //1(cave)                   3
-        {"Bažinný slizák", "Mazlavá hrouda hniloby, co se plazí mokřady a pohlcuje vše živé.", 80, 20, {}},                                                                         //3(Les plný mokřadů)       4
-        {"Plamenný netvor", "Bytost ze sfér ohně, hořící plameny ji obklopují i během boje.", 80, 20, {}},                                                                          //4(Zřicenina hradu)        5
-        {"Lesní běs", "Zkroucený duch přírody, co chrání zapomenuté lesy. Vzývá stromy a trny.", 80, 20, {}},                                                                       //3(Les plný mokřadů)       6
-        {"Kamenný kolos", "Obrovitý tvor z kamene, který se pohybuje pomalu, ale devastuje jediným úderem.", 80, 20, {}},                                                           //1(cave)                   7
-        {"Krvesajný havran", "Zmutovaný pták velikosti psa, který útočí ve skupinách a cílí na oči.", 80, 20, {}},                                                                  //5(opuštěná ZOO)           8
-        {"Krveplaz", "Rozervaný tvor s trhlinami v těle, z nichž visí kůže a maso. Jeho útoky jsou brutální a neúprosné.", 80, 20, {}},                                             //6(opuštělá chalupa)       9
-        {"Dýmová příšera", "Nestvůra z černého kouře, která nemá tvar ani duši. Dusí vše, co vdechuje její plyn.", 80, 20, {}},                                                     //4(Zřicenina hradu)        10
-        {"Chrlič zatracení", "Oživená kamenná socha z chrámu padlých bohů, věčně bdí a zabíjí vše cizí.", 80, 20, {}},                                                              //7(hřbitov)                11
-        {"Šeptač nocí", "Neviditelný přízrak, který láme mysl šeptáním. Je slyšet, ale málokdo ho viděl.", 80, 20, {}},                                                             //2(děsivé místo)           12
-        {"Ledová zmije", "Had s krystaly ledu místo šupin. Její dech mrzne krev v žilách.", 80, 20, {}},                                                                            //5(opuštěná ZOO)           13
-        {"Bezlící Mučitel", "Bezlící mučitel bez hlavy, který bez zastavení loví a mučí duše svých obětí věčnou bolestí.", 80, 20, {}},                                             //6(opuštělá chalupa)       14
-        {"Pavučinová matka", "Obrovský pavouk s lidskou tváří. Ovládá menší pavouky a své oběti balí zaživa.", 80, 20, {}},                                                         //5(opuštěná ZOO)           15
-        {"Půlnoční běs", "Noční jezdec beze jména, zjevuje se za úplňku. Jeho oči žhnou a kůň nevrhá stín.", 80, 20, {}},                                                           //2(děsivé místo)           16
-        {"Mikeš", "Na pohled roztomilá černá kočička, ve skutečnosti zákeřný démon. Přede, uspává nepřátele a útočí ze stínů. Přináší smůlu těm, kdo se ho dotknou.", 80, 20, {}},  //8(brloch)                 17
-        {"MB", "MB", 80, 20, {}},
-        {"MB2", "MB2", 80, 20, {}},
-        {"HEXARA", "HEXARA", 80, 20, {}}
+        {"Stínokrad", "Tvor z temnoty, který se zjevuje tam, kde se šíří strach. Jeho tělo tvoří živoucí stín.", false, 100, 10, {}},                                                      //1(cave)                   1
+        {"Kostěný rváč", "Nemrtvý válečník se zrezivělým mečem a popraskaným štítem. I po smrti touží po souboji.", false, 80, 20, {}},                                                    //7(hřbitov)                2
+        {"Jeskynní škrabač", "Malý, ale nebezpečný tvor se silnými drápy. Vydává děsivé zvuky, než zaútočí ze tmy.", false, 80, 20, {}},                                                   //1(cave)                   3
+        {"Bažinný slizák", "Mazlavá hrouda hniloby, co se plazí mokřady a pohlcuje vše živé.", false, 80, 20, {}},                                                                         //3(Les plný mokřadů)       4
+        {"Plamenný netvor", "Bytost ze sfér ohně, hořící plameny ji obklopují i během boje.", false, 80, 20, {}},                                                                          //4(Zřicenina hradu)        5
+        {"Lesní běs", "Zkroucený duch přírody, co chrání zapomenuté lesy. Vzývá stromy a trny.", false, 80, 20, {}},                                                                       //3(Les plný mokřadů)       6
+        {"Kamenný kolos", "Obrovitý tvor z kamene, který se pohybuje pomalu, ale devastuje jediným úderem.", false, 80, 20, {}},                                                           //1(cave)                   7
+        {"Krvesajný havran", "Zmutovaný pták velikosti psa, který útočí ve skupinách a cílí na oči.", false, 80, 20, {}},                                                                  //5(opuštěná ZOO)           8
+        {"Krveplaz", "Rozervaný tvor s trhlinami v těle, z nichž visí kůže a maso. Jeho útoky jsou brutální a neúprosné.", false, 80, 20, {}},                                             //6(opuštělá chalupa)       9
+        {"Dýmová příšera", "Nestvůra z černého kouře, která nemá tvar ani duši. Dusí vše, co vdechuje její plyn.", false, 80, 20, {}},                                                     //4(Zřicenina hradu)        10
+        {"Chrlič zatracení", "Oživená kamenná socha z chrámu padlých bohů, věčně bdí a zabíjí vše cizí.", false, 80, 20, {}},                                                              //7(hřbitov)                11
+        {"Šeptač nocí", "Neviditelný přízrak, který láme mysl šeptáním. Je slyšet, ale málokdo ho viděl.", false, 80, 20, {}},                                                             //2(děsivé místo)           12
+        {"Ledová zmije", "Had s krystaly ledu místo šupin. Její dech mrzne krev v žilách.", false, 80, 20, {}},                                                                            //5(opuštěná ZOO)           13
+        {"Bezlící Mučitel", "Bezlící mučitel bez hlavy, který bez zastavení loví a mučí duše svých obětí věčnou bolestí.", false, 80, 20, {}},                                             //6(opuštělá chalupa)       14
+        {"Pavučinová matka", "Obrovský pavouk s lidskou tváří. Ovládá menší pavouky a své oběti balí zaživa.", false, 80, 20, {}},                                                         //5(opuštěná ZOO)           15
+        {"Půlnoční běs", "Noční jezdec beze jména, zjevuje se za úplňku. Jeho oči žhnou a kůň nevrhá stín.", false, 80, 20, {}},                                                           //2(děsivé místo)           16
+        {"Mikeš", "Na pohled roztomilá černá kočička, ve skutečnosti zákeřný démon. Přede, uspává nepřátele a útočí ze stínů. Přináší smůlu těm, kdo se ho dotknou.", false, 80, 20, {}},  //8(brloch)                 17
+        {"MB", "MB", true, 80, 20, {}},
+        {"MB2", "MB2", true, 80, 20, {}},
+        {"HEXARA", "HEXARA", true, 80, 20, {}}
     };
 
     Misto mista[] =
@@ -177,67 +204,114 @@ void vypis_hrdiny()
     cout << "Mana: " << hrdinove[muj_hrdina].mana << endl;
     cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl;
     cout << "Level: " << hrdinove[muj_hrdina].level << endl;
-    cout << "- Max životy: " << levels[hrdinove[muj_hrdina].level].max_zivoty << endl;
-    cout << "- Max mana: " << levels[hrdinove[muj_hrdina].level].max_mana << endl;
+    cout << "- Max životy: " << hrdinove[muj_hrdina].max_zivoty << endl;
+    cout << "- Max mana: " << hrdinove[muj_hrdina].max_mana << endl;
     cout << "Zkušenosti: " << hrdinove[muj_hrdina].zkusenosti << endl;
     cout << "Útok: " << hrdinove[muj_hrdina].utok << endl << endl;
 }
 
-void vesnice()
+void vesnice() // řeší možnosti vesnice, doplnění vlastností hrdiny
 {
     int vyber = 0;
     cout << "Ve vesnici si můžeš doplnit životy, vylepšit max životy, manu a útok." << endl;
     do
     {
-    cout << "Tvé staty:" << endl;
-    cout << "\nJméno: " << hrdinove[muj_hrdina].jmeno << endl;
-    cout << "Životy: " << hrdinove[muj_hrdina].zivoty << "/" << levels[hrdinove[muj_hrdina].level].max_zivoty << endl;
-    cout << "Mana: " << hrdinove[muj_hrdina].mana << "/" << levels[hrdinove[muj_hrdina].level].max_mana << endl;
-    cout << "Útok: " << hrdinove[muj_hrdina].utok << endl;
-    cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl << endl;
+        cout << "Tvé staty:" << endl;
+        cout << "Jméno: " << hrdinove[muj_hrdina].jmeno << endl;
+        cout << "Životy: " << hrdinove[muj_hrdina].zivoty << "/" << hrdinove[muj_hrdina].max_zivoty << endl;
+        cout << "Mana: " << hrdinove[muj_hrdina].mana << "/" << hrdinove[muj_hrdina].max_mana << endl;
+        cout << "Útok: " << hrdinove[muj_hrdina].utok << endl;
+        cout << "Peníze: " << hrdinove[muj_hrdina].penize << endl << endl;
 
-    cout << "1:Doplní životy" << endl;
-    cout << "2:Upgrade max-životy" << endl;
-    cout << "3:Doplní manu" << endl;
-    cout << "4:Upgrade max-mana" << endl;
-    cout << "5:Upgrade útok" << endl;
-    cout << "6:Opustit vesnici" << endl << endl;
-    cout << "Vyber volbu:"<< endl;
-    cin >> vyber;
+        cout << "1:Doplní životy" << endl;
+        cout << "2:Upgrade max-životy" << endl;
+        cout << "3:Doplní manu" << endl;
+        cout << "4:Upgrade max-mana" << endl;
+        cout << "5:Upgrade útok" << endl;
+        cout << "6:Opustit vesnici" << endl << endl;
+        cout << "Vyber volbu:"<< endl;
+        cin >> vyber;
 
         switch(vyber)
         {
-        case 1:
-            hrdinove[muj_hrdina].zivoty = levels[hrdinove[muj_hrdina].level].max_zivoty;
-            hrdinove[muj_hrdina].penize -= 20;
+        case 1: // Doplní životy
+            if (hrdinove[muj_hrdina].zivoty == hrdinove[muj_hrdina].max_zivoty)
+            {
+                cout << "Už si vyléčený." << endl;
+                break;
+            }
+
+            if (hrdinove[muj_hrdina].penize < CENA_ZA_UPGRADE)
+            {
+                cout << "Nemáš dostatek peněz." << endl;
+            }
+            else
+            {
+                hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].max_zivoty;
+                hrdinove[muj_hrdina].penize -= CENA_ZA_UPGRADE;
+            }
             cout << endl;
             break;
 
-        case 2:
-            levels[hrdinove[muj_hrdina].level].max_zivoty = levels[hrdinove[muj_hrdina].level].max_zivoty + 20;
-            hrdinove[muj_hrdina].penize -= 20;
+        case 2: // Upgrade max-životy
+            if (hrdinove[muj_hrdina].penize < CENA_ZA_UPGRADE)
+            {
+                cout << "Nemáš dostatek peněz.";
+            }
+            else
+            {
+                hrdinove[muj_hrdina].max_zivoty += NAVYSENI_MAX;
+                hrdinove[muj_hrdina].penize -= CENA_ZA_UPGRADE;
+            }
             cout << endl;
             break;
 
-        case 3:
-            hrdinove[muj_hrdina].mana = levels[hrdinove[muj_hrdina].level].max_mana;
-            hrdinove[muj_hrdina].penize -= 20;
+        case 3: // Doplní manu
+            if (hrdinove[muj_hrdina].mana == hrdinove[muj_hrdina].max_mana)
+            {
+                cout << "Už máš many dost." << endl;
+                break;
+            }
+
+            if (hrdinove[muj_hrdina].penize < CENA_ZA_UPGRADE)
+            {
+                cout << "Nemáš dostatek peněz.";
+            }
+            else
+            {
+                hrdinove[muj_hrdina].mana = hrdinove[muj_hrdina].max_mana;
+                hrdinove[muj_hrdina].penize -= CENA_ZA_UPGRADE;
+            }
             cout << endl;
             break;
 
-        case 4:
-            levels[hrdinove[muj_hrdina].level].max_mana = levels[hrdinove[muj_hrdina].level].max_mana + 20;
-            hrdinove[muj_hrdina].penize -= 20;
+        case 4: // Upgrade max-mana
+            if (hrdinove[muj_hrdina].penize < CENA_ZA_UPGRADE)
+            {
+                cout << "Nemáš dostatek peněz.";
+            }
+            else
+            {
+                hrdinove[muj_hrdina].max_mana += NAVYSENI_MAX;
+                hrdinove[muj_hrdina].penize -= CENA_ZA_UPGRADE;
+            }
             cout << endl;
             break;
 
-        case 5:
-            hrdinove[muj_hrdina].utok = hrdinove[muj_hrdina].utok + 20;
-            hrdinove[muj_hrdina].penize -= 20;
+        case 5: // Upgrade útok
+            if (hrdinove[muj_hrdina].penize < CENA_ZA_UPGRADE)
+            {
+                cout << "Nemáš dostatek peněz.";
+            }
+            else
+            {
+                hrdinove[muj_hrdina].utok = hrdinove[muj_hrdina].utok + NAVYSENI_MAX;
+                hrdinove[muj_hrdina].penize -= CENA_ZA_UPGRADE;
+            }
             cout << endl;
             break;
 
-        case 6:
+        case 6: // Opustit vesnici
             cout << "Opouštíš vesnici...";
             cout << endl;
             break;
@@ -251,30 +325,63 @@ void vesnice()
     while(vyber != 6);
 }
 
-void boj()
+void tah_monstra(int index, int cislo_tahu)
 {
-    /**
-    cout << hrdinove[muj_hrdina].jmeno << endl;
-    for (int i = 0; i < sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]); i++)
-    {
-        if(mista[pozice].monstra[i] > 0)
-        {
-            cout << monstra[mista[pozice].monstra[i]].jmeno;
-            if(monstra[mista[pozice].monstra[i]].zivoty <= 0)
-            {
-                cout <<    " DEAD";
-            }
-            cout << endl;
-         }
-    }
-    system("pause");
-    **/
+    cout << "Tah " << cislo_tahu << ".: " << endl;
+    cout << "Monstrum útočí silou " << monstra[mista[pozice].monstra[index]].utok << ", Hrdina má " << hrdinove[muj_hrdina].zivoty << " životů" << endl;
+    hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - monstra[mista[pozice].monstra[index]].utok;
 
-    for (int i = 0; i < sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]); i++)
+    if(hrdinove[muj_hrdina].zivoty <= 0) // je hrdina mrtvý?
+    {
+        cout << "Hrdina prohrál souboj" << endl;
+        konec(false);
+    }
+}
+
+void tah_hrdiny(int index, int cislo_tahu)
+{
+    cout << "Tah " << cislo_tahu << ".: " << endl;
+    cout << "Hrdina útočí silou " << hrdinove[muj_hrdina].utok << ", Monstrum má " << monstra[mista[pozice].monstra[index]].zivoty << " životů" << endl;
+    monstra[mista[pozice].monstra[index]].zivoty = monstra[mista[pozice].monstra[index]].zivoty - hrdinove[muj_hrdina].utok;
+
+    if(monstra[mista[pozice].monstra[index]].zivoty <= 0) // je monstrum mrtvé?
+    {
+        cout << "Hrdina vyhrál souboj ";
+        cout << "a má nyní tolik zkušeností: " << ++hrdinove[muj_hrdina].zkusenosti << endl;
+        if (hrdinove[muj_hrdina].zkusenosti % 3 == 0) // navyseni levelu
+        {
+            if(hrdinove[muj_hrdina].level < sizeof(levels)/sizeof(levels[0]) - 1) // máme další level?
+            {
+                hrdinove[muj_hrdina].level++;
+                cout << "Hrdinovi se zvýšil level na úroveň " << hrdinove[muj_hrdina].level << endl;
+                hrdinove[muj_hrdina].max_zivoty += levels[hrdinove[muj_hrdina].level].plus_zivoty;
+                hrdinove[muj_hrdina].max_mana += levels[hrdinove[muj_hrdina].level].plus_mana;
+            }
+        }
+
+        srand(time(0));
+        int sance = rand() % 2;
+        if (sance) // sance ziskat penize z boje
+        {
+            int korist = (10 * (rand() % 6) + 10);
+            korist = korist * levels[hrdinove[muj_hrdina].level].odmena; // násobení koeficientem odměny dle levelu
+            //if(debug) {cout << "Korist: " << korist << endl;}
+            hrdinove[muj_hrdina].penize += korist;
+            cout << "Monstrum mělo u sebe " << korist << " peněz." << endl;
+        }
+
+        cout << "Hrdina má nyní u sebe " << hrdinove[muj_hrdina].penize << " peněz." << endl;
+        if(debug) vypis_hrdiny();
+    }
+}
+
+void boj() // řeší boj s jedním nebo více monstry na daném místě
+{
+    for (int i = 0; i < sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]); i++) // prochazi monstra v miste
     {
         bool vyhra_souboj = false;
         int tah = 1;
-        if(mista[pozice].monstra[i] > 0 && monstra[mista[pozice].monstra[i]].zivoty > 0)
+        if(mista[pozice].monstra[i] > 0 && monstra[mista[pozice].monstra[i]].zivoty > 0) // jsou v místě živá monstra?
         {
             system("pause");
             system("cls");
@@ -283,49 +390,33 @@ void boj()
             system("pause");
             cout << endl;
 
-            do
+            do // zacatek boje s jednim monstrem
             {
-                cout << "Tah " << tah++ << ".: " << endl;
-                cout << "Hrdina útočí silou " << hrdinove[muj_hrdina].utok << ", Monstrum má " << monstra[mista[pozice].monstra[i]].zivoty << " životů" << endl;
-                monstra[mista[pozice].monstra[i]].zivoty = monstra[mista[pozice].monstra[i]].zivoty - hrdinove[muj_hrdina].utok;
-
-                if(monstra[mista[pozice].monstra[i]].zivoty <= 0)
+                if (monstra[mista[pozice].monstra[i]].boss) // v případě bosse zahajuje boj boss
                 {
-                    cout << "Hrdina vyhrál souboj ";
-                    cout << "a má nyní tolik zkušeností: " << ++hrdinove[muj_hrdina].zkusenosti << endl;
-                    if (hrdinove[muj_hrdina].zkusenosti % 3 == 0)
+                    tah_monstra(i, tah);
+                    tah++;
+                    tah_hrdiny(i, tah);
+                    tah++;
+                    if(monstra[mista[pozice].monstra[i]].zivoty <= 0) // je monstrum mrtvé?
                     {
-                        hrdinove[muj_hrdina].level++;
-                        cout << "Hrdinovi se zvýšil level na úroveň " << hrdinove[muj_hrdina].level << endl;
-                    }
-
-                    srand(time(0));
-                    int sance = rand() % 2;
-                    if (sance)
-                    {
-                        int korist = (10 * (rand() % 6) + 10);
-                        korist = korist * levels[hrdinove[muj_hrdina].level].odmena;
-                        //if(debug) {cout << "Korist: " << korist << endl;}
-                        hrdinove[muj_hrdina].penize = hrdinove[muj_hrdina].penize + korist;
-                        cout << "Monstrum mělo u sebe " << korist << " peněz." << endl;
-                    }
-                    cout << "Hrdina má nyní u sebe " << hrdinove[muj_hrdina].penize << " peněz." << endl;
-                    vyhra_souboj = true;
-                    if(debug) vypis_hrdiny();
-                }
-                else
-                {
-                    cout << "Tah " << tah++ << ".: " << endl;
-                    cout << "Monstrum útočí silou " << monstra[mista[pozice].monstra[i]].utok << ", Hrdina má " << hrdinove[muj_hrdina].zivoty << " životů" << endl;
-                    hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - monstra[mista[pozice].monstra[i]].utok;
-
-                    if(hrdinove[muj_hrdina].zivoty <= 0)
-                    {
-                        cout << "Hrdina prohrál souboj" << endl;
-                        konec(false);
+                        vyhra_souboj = true;
                     }
                 }
-
+                else // boj zahajuje hrdina
+                {
+                    tah_hrdiny(i, tah);
+                    tah++;
+                    if(monstra[mista[pozice].monstra[i]].zivoty <= 0) // je monstrum mrtvé?
+                    {
+                        vyhra_souboj = true;
+                    }
+                    else
+                    {
+                        tah_monstra(i, tah);
+                        tah++;
+                    }
+                }
             } while(!vyhra_souboj);
         }
     }
@@ -345,19 +436,19 @@ void pohyb()
 
     int pocet_monster = sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]);
 
-    for (int j = 0; j < pocet_monster; j++)
+    for (int j = 0; j < pocet_monster; j++) // prochází všechna monstra v místě
     {
-        if (mista[pozice].monstra[j] > 0)
+        if (mista[pozice].monstra[j] > 0) // přeskakuje NoMonster
         {
             cout << "Na tomto místě je toto monstrum: " << monstra[mista[pozice].monstra[j]].jmeno << endl;
             m++;
         }
     }
-    if(m)
+    if(m) // jsou v místě nějaká monstra?
     {
-        //boj();
+        boj();
     }
-    if(mista[pozice].typ == "vesnice")
+    if(mista[pozice].typ == "vesnice") // pokud seš ve vesnici
     {
         vesnice();
     }
@@ -451,11 +542,10 @@ int main()
 
         if (pozice == posledni_misto)
         {
-            konec_hry = true;
+            konec(true);
         }
        // konec_hry = true;
-    } while (!konec_hry);
+    } while (true);
 
-    cout << "\nGAME OVER!!" << endl;
     return 0;
 }
