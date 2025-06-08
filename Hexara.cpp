@@ -1,15 +1,15 @@
 // Autor: Marek Sýkora
-// Verze: 1.0.0 release 8
 
-// TODO
+// TODO:
 // sjednotit ovládání voleb
-// kouzla + Hexara
 // vylepšit výpisy
 // dopsat popisy míst a doplnit příběh
+// navštívená místa
+// optimalizace kontroly pouzitych kouzel (do while)
+// vlastni funkce pause
 
 // Známé chyby
 // ...
-
 
 #include <iostream>
 #include <conio.h>
@@ -19,13 +19,13 @@
 #include <limits>           //řešení náhodnosti
 using namespace std;
 
-
     int pozice          = 0;
     int muj_hrdina;
     bool konec_hry      = false;
     bool debug          = true;
     string klavesy[5]   = {"q", "w", "e", "r", "t"};
     bool omraceni       = false;
+    int minule_kouzlo   = 0;
 
     // Parametry hry
 
@@ -52,7 +52,6 @@ using namespace std;
     struct Mostrum
     {
         string jmeno;
-        // int id;
         string popis;
         bool boss;
         int zivoty;
@@ -92,6 +91,8 @@ using namespace std;
     {
         string nazev;
         float uder;         //Znasobi silu uderu
+        int leceni;         //+zivoty monstra
+        bool pouzito;       //Bylo kouzlo pouzito?
     };
 
     // DATA HRY
@@ -120,14 +121,14 @@ using namespace std;
     };
     Kouzlo kouzla[] =
     {
-        // nazev; uder;
-        {"NoKouzlo", 1},
-        {"Fireball", 1.5},
-        {"Led", 1.3},
-        {"Stín", 1.3},
-        {"Vítr", 1.3},
-        {"Jed", 1.3},
-        {"Léčivé", 1.3}
+        // nazev; uder; leceni; pouzito;
+        {"NoKouzlo", 1, 0, false},
+        {"Fireball", 1.3, 0, false},
+        {"Led", 1.3, 0, false},
+        {"Stín", 1.3, 0, false},
+        {"Vítr", 1.3, 0, false},
+        {"Jed", 1.3, 0, false},
+        {"Léčivé", 0, 50, false}
     };
 
     Hrdina hrdinove[] =
@@ -160,9 +161,9 @@ using namespace std;
         {"Pavučinová matka", "Obrovský pavouk s lidskou tváří. Ovládá menší pavouky a své oběti balí zaživa.", false, 80, 20, {}},                                                         //5(opuštěná ZOO)           15
         {"Půlnoční běs", "Noční jezdec beze jména, zjevuje se za úplňku. Jeho oči žhnou a kůň nevrhá stín.", false, 80, 20, {}},                                                           //2(děsivé místo)           16
         {"Mikeš", "Na pohled roztomilá černá kočička, ve skutečnosti zákeřný démon. Přede, uspává nepřátele a útočí ze stínů. Přináší smůlu těm, kdo se ho dotknou.", false, 80, 20, {}},  //8(brloch)                 17
-        {"MB", "MB", true, 80, 20, {}},
-        {"MB2", "MB2", true, 80, 20, {}},
-        {"HEXARA", "HEXARA", true, 80, 20, {}}
+        {"MB", "MB", true, 200, 30, {}},
+        {"MB2", "MB2", true, 250, 15, {}},
+        {"HEXARA", "HEXARA", true, 300, 50, {1, 2, 3, 4, 5, 6}}
     };
 
     Misto mista[] =
@@ -336,15 +337,52 @@ void vesnice() // řeší možnosti vesnice, doplnění vlastností hrdiny
 void tah_monstra(int index, int cislo_tahu)
 {
     cout << "Tah " << cislo_tahu << ".: " << endl;
-    if (omraceni)
+    if (omraceni)   //hrdina pouzil schopnost omráčení a mosntrum vynechava 1 tah
     {
         cout << "Monstrum je omráčené a nemůže útočit" << endl;
         omraceni = false;
     }
-    else
+    else    //monstrum neni omraceno a je na tahu
     {
-        cout << "Monstrum útočí silou " << monstra[mista[pozice].monstra[index]].utok << ", Hrdina má " << hrdinove[muj_hrdina].zivoty << " životů" << endl;
-        hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - monstra[mista[pozice].monstra[index]].utok;
+        if (monstra[mista[pozice].monstra[index]].jmeno == "HEXARA")    //Zacina boj s HEXAROU
+        {
+            bool vsechna_kouzla_pouzita = true;
+            for(int i = 1; i < sizeof(kouzla)/sizeof(kouzla[0]); i++)   // Bylo kouzlo pouzito?
+            {
+                if(kouzla[i].pouzito == false)  //Urcovani (ne)pouziti
+                {
+                    vsechna_kouzla_pouzita = false;
+                }
+            }
+            if(vsechna_kouzla_pouzita)  // Kdyz byla pouzita vsechna kouzla, tak konec
+            {
+                // hexova smrst
+                cout << "HEXARA útočí hexovou smrští všech svých kouzel, kterou žádný hrdina nemůže přežít. " << endl;
+                konec(false);
+            }
+            srand(time(0));
+            int id_kouzlo = rand() % 7;
+            string kouzlo = kouzla[id_kouzlo].nazev;
+            float sila_kouzla = kouzla[id_kouzlo].uder * monstra[mista[pozice].monstra[index]].utok;
+            if (id_kouzlo == minule_kouzlo)
+            {
+                sila_kouzla *= 2;
+            }
+            kouzla[id_kouzlo].pouzito = true;
+            minule_kouzlo = id_kouzlo;
+
+            cout << "HEXARA útočí a používá kouzlo " << kouzlo << ", Hrdina má " << hrdinove[muj_hrdina].zivoty << " životů" << endl;
+            hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - sila_kouzla;
+            if(kouzla[id_kouzlo].leceni > 0)
+            {
+                monstra[mista[pozice].monstra[index]].zivoty += kouzla[id_kouzlo].leceni;
+            }
+        }
+        else
+        {
+            cout << "Monstrum útočí silou " << monstra[mista[pozice].monstra[index]].utok << ", Hrdina má " << hrdinove[muj_hrdina].zivoty << " životů" << endl;
+            hrdinove[muj_hrdina].zivoty = hrdinove[muj_hrdina].zivoty - monstra[mista[pozice].monstra[index]].utok;
+        }
     }
 
     if(hrdinove[muj_hrdina].zivoty <= 0) // je hrdina mrtvý?
@@ -430,6 +468,10 @@ void tah_hrdiny(int index, int cislo_tahu)
 
         srand(time(0));
         int sance = rand() % 2;
+        if (monstra[mista[pozice].monstra[index]].boss) //boss dava vzdy penize
+        {
+            sance = 1;
+        }
         if (sance) // sance ziskat penize z boje
         {
             int korist = (10 * (rand() % 6) + 10);
@@ -561,7 +603,6 @@ void pohyb()
         cout << "Press any key to continue!";
         kod_klavesy = getch();
     }
-
 }
 
 int main()
