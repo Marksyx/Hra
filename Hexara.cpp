@@ -4,12 +4,6 @@
 // sjednotit ovládání voleb
 // vylepšit výpisy
 // dopsat popisy míst a doplnit příběh
-// navštívená místa
-// optimalizace kontroly pouzitych kouzel (do while)
-// vlastni funkce pause
-
-// Známé chyby
-// ...
 
 #include <iostream>
 #include <conio.h>
@@ -32,6 +26,25 @@ using namespace std;
     const int CENA_ZA_UPGRADE = 20;
     const int NAVYSENI_MAX = 20;
     const int MANA_ZA_SCHOPNOST = 30;
+
+    // Barvy textu
+
+    const INT BLACK = 0;
+    const INT DARK_BLUE = 1;
+    const INT DARK_GREEN = 2;
+    const INT DARK_CYAN = 3;
+    const INT DARK_RED = 4;
+    const INT DARK_MAGENTA = 5;
+    const INT DARK_YELLOW = 6;
+    const INT GREY = 7;
+    const INT DARK_GREY = 8;
+    const INT BLUE = 9;
+    const INT GREEN = 10;
+    const INT CYAN = 11;
+    const INT RED = 12;
+    const INT MAGENTA = 13;
+    const INT YELLOW = 14;
+    const INT WHITE = 15;
 
     struct Hrdina          //pouziti struktur, chatGBT, https://www.w3schools.com/cpp/cpp_structs.asp, dokumentace c++
     {
@@ -190,6 +203,19 @@ using namespace std;
     int pocet_mist      = sizeof(mista)/sizeof(mista[0]);
     int posledni_misto  = pocet_mist - 1;
 
+void barva(int color = GREY)//Vlastní funkce na změnu barvy textu
+{
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
+}
+
+void pauza(string text = "Jestli se nebojíš, pokračuj kliknutím na cokoli...")//Vlastní funkce pauza
+{
+    barva(DARK_RED);
+    cout << text << endl;
+    barva();
+    getch();
+}
+
 void konec(bool vyhra)
 {
     if(vyhra)
@@ -206,6 +232,7 @@ void konec(bool vyhra)
 
 void vypis_hrdiny()
 {
+    barva(GREEN);
     cout << "\nJméno: " << hrdinove[muj_hrdina].jmeno << endl;
     cout << "Popis: " << hrdinove[muj_hrdina].popis << endl;
     cout << "Životy: " << hrdinove[muj_hrdina].zivoty << endl;
@@ -217,6 +244,7 @@ void vypis_hrdiny()
     cout << "Zkušenosti: " << hrdinove[muj_hrdina].zkusenosti << endl;
     cout << "Útok: " << hrdinove[muj_hrdina].utok << endl;
     cout << "Schopnost: " << schopnosti[hrdinove[muj_hrdina].schopnost].nazev << endl << endl;
+    barva();
 }
 
 void vesnice() // řeší možnosti vesnice, doplnění vlastností hrdiny
@@ -352,6 +380,7 @@ void tah_monstra(int index, int cislo_tahu)
                 if(kouzla[i].pouzito == false)  //Urcovani (ne)pouziti
                 {
                     vsechna_kouzla_pouzita = false;
+                    break;
                 }
             }
             if(vsechna_kouzla_pouzita)  // Kdyz byla pouzita vsechna kouzla, tak konec
@@ -494,11 +523,11 @@ void boj() // řeší boj s jedním nebo více monstry na daném místě
         int tah = 1;
         if(mista[pozice].monstra[i] > 0 && monstra[mista[pozice].monstra[i]].zivoty > 0) // jsou v místě živá monstra?
         {
-            system("pause");
+            pauza();
             system("cls");
             cout << "\nBoj s monstrem " << monstra[mista[pozice].monstra[i]].jmeno << endl;
             cout << monstra[mista[pozice].monstra[i]].popis << endl;
-            system("pause");
+            pauza();
             cout << endl;
 
             do // zacatek boje s jednim monstrem
@@ -544,6 +573,7 @@ void pohyb()
     bool spravna_klavesa = false;
 
     cout << endl << "Nacházíš se na místě " << mista[pozice].nazev << endl;
+    mista[pozice].navstiveno = true;
 
     int pocet_monster = sizeof(mista[pozice].monstra)/sizeof(mista[pozice].monstra[0]);
 
@@ -555,7 +585,7 @@ void pohyb()
             m++;
         }
     }
-    if(m) // jsou v místě nějaká monstra?
+    if(m) //Jsou v místě nějaká monstra?
     {
         boj();
     }
@@ -571,12 +601,18 @@ void pohyb()
     {
         if (mista[pozice].pohyb[j] > 0)
         {
+            string navstiveno = " ";
             int id_budouci = mista[pozice].pohyb[j];
-            cout << mista[id_budouci].nazev << "(" << klavesy[k]<< ") "<< endl;
+
+            if (mista[id_budouci].navstiveno)
+            {
+                navstiveno = "Objeveno";
+            }
+
+            cout << mista[id_budouci].nazev << "(" << klavesy[k]<< ") " << navstiveno << endl;
             xMisto[j] = id_budouci;
             xKlavesa[j] = klavesy[k];
             k++;
-            // cout << mista[id_budouci].nazev << "(" << xKlavesa[j] << "): " << xMisto[j] << endl;
         }
     }
 
